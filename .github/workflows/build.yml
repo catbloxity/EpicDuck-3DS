@@ -22,9 +22,9 @@ jobs:
           echo "DEVKITPRO=/opt/devkitpro" >> $GITHUB_ENV
           echo "DEVKITARM=/opt/devkitpro/devkitARM" >> $GITHUB_ENV
           echo "/opt/devkitpro/devkitARM/bin" >> $GITHUB_PATH
-          # also source the official env if it exists
+          # container uses sh, not bash
           if [ -f /etc/profile.d/devkit-env.sh ]; then
-            source /etc/profile.d/devkit-env.sh
+            . /etc/profile.d/devkit-env.sh
           fi
           echo "DEVKITPRO is $DEVKITPRO"
           ls /opt/devkitpro/libctru/include/3ds.h || echo "WARNING: 3ds.h not found at expected path"
