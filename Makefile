@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------------
-# Target configuration
+# Epic Duck 3DS Makefile
 #---------------------------------------------------------------------------------
 TARGET		:= EpicDuck
 BUILD		:= build
@@ -7,24 +7,31 @@ SOURCES		:= source
 DATA		:= data
 INCLUDES	:= include
 
-# App metadata for SMDH / CIA generation
 APP_TITLE	:= Epic Duck 3DS
 APP_AUTHOR	:= catbloxity
 APP_DESC	:= A 3DS port of Epic Duck
 APP_ICON	:= icon.png
 
 #---------------------------------------------------------------------------------
-# Tools & Flags
+# Force correct paths (works in Docker + local)
 #---------------------------------------------------------------------------------
+DEVKITPRO	?= /opt/devkitpro
+DEVKITARM	:= $(DEVKITPRO)/devkitARM
+
 PREFIX		:= arm-none-eabi-
 CC		:= $(PREFIX)gcc
 CXX		:= $(PREFIX)g++
-LD		:= $(PREFIX)c++
+LD		:= $(PREFIX)g++
 STRIP		:= $(PREFIX)strip
 3DSXTOOL	:= 3dsxtool
 MAKEROM		:= makerom
 
 ARCH		:= -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=cp15
+
+INCLUDE		:= -I$(CURDIR)/include \
+		   -I$(CURDIR)/$(BUILD) \
+		   -I$(DEVKITPRO)/libctru/include \
+		   -I$(DEVKITPRO)/portlibs/3ds/include
 
 CFLAGS		:= -g -Wall -O2 -ffunction-sections \
 		   $(ARCH) -D__3DS__ $(INCLUDE)
@@ -33,14 +40,10 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions
 
 LDFLAGS		:= -specs=3dsx.specs $(ARCH) -Wl,--gc-sections
 
-LIBS		:= -lcitro2d -lcitro3d -lctru -lm
+LIBS		:= -lctru -lm
+LIBPATHS	:= -L$(DEVKITPRO)/libctru/lib -L$(DEVKITPRO)/portlibs/3ds/lib
 
 #---------------------------------------------------------------------------------
-# Directory setup & Source discovery
-#---------------------------------------------------------------------------------
-export TOPDIR	:= $(CURDIR)
-export BUILDDIR	:= $(CURDIR)/$(BUILD)
-
 CFILES		:= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
 CPPFILES	:= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 SFILES		:= $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.s))
@@ -49,29 +52,13 @@ OFILES		:= $(addprefix $(BUILD)/,$(notdir $(CFILES:.c=.o))) \
 		   $(addprefix $(BUILD)/,$(notdir $(CPPFILES:.cpp=.o))) \
 		   $(addprefix $(BUILD)/,$(notdir $(SFILES:.s=.o)))
 
-export VPATH	:= $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+VPATH		:= $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 
-INCLUDE		:= $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-		   -I$(CURDIR)/$(BUILD) \
-		   -I$(DEVKITPRO)/libctru/include \
-		   -I$(DEVKITPRO)/portlibs/3ds/include
+export PATH	:= $(DEVKITARM)/bin:$(PATH)
 
-LIBPATHS	:= -L$(DEVKITPRO)/libctru/lib -L$(DEVKITPRO)/portlibs/3ds/lib
-
-#---------------------------------------------------------------------------------
-# Build Rules
-#---------------------------------------------------------------------------------
-ifeq ($(strip $(DEVKITPRO)),)
-$(error "Please set DEVKITPRO in your environment. (e.g. export DEVKITPRO=/opt/devkitpro)")
-endif
-
-export DEVKITARM	:= $(DEVKITPRO)/devkitARM
-export PATH		:= $(DEVKITARM)/bin:$(PATH)
-
-.PHONY: all clean $(BUILD)
+.PHONY: all clean
 
 all: $(BUILD) $(TARGET).elf $(TARGET).3dsx
-	@# try CIA if possible
 	@$(MAKE) $(TARGET).cia || true
 
 $(BUILD):
@@ -79,8 +66,8 @@ $(BUILD):
 
 $(TARGET).cia: $(TARGET).elf
 	@echo "building .cia..."
-	@$(MAKEROM) -f cia -o $@ -elf $(TARGET).elf -rsf $(CURDIR)/build.rsf $(if $(wildcard $(TARGET).smdh),-icon $(TARGET).smdh,) || \
-	 echo "Note: CIA build skipped or failed (need makerom + valid build.rsf)"
+	@$(MAKEROM) -f cia -o $@ -elf $(TARGET).elf -rsf $(CURDIR)/build.rsf $(if $(wildcard $(TARGET).smdh),-icon $(TARGET).smdh,) 2>/dev/null || \
+	 echo "Note: CIA skipped (makerom missing or failed)"
 
 $(TARGET).3dsx: $(TARGET).elf
 	@echo "building .3dsx..."
@@ -95,11 +82,11 @@ $(TARGET).smdh:
 		echo "building smdh..."; \
 		smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(APP_ICON) $@; \
 	else \
-		echo "No icon.png or smdhtool - skipping smdh"; \
+		echo "No icon or smdhtool - skipping smdh"; \
 	fi
 
 $(TARGET).elf: $(OFILES)
-	@echo "linking..."
+	@echo "linking $(TARGET).elf..."
 	@$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
 	@$(STRIP) -s $@
 
