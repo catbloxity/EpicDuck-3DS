@@ -1,0 +1,61 @@
+BasicInfo:
+  Title                   : "Epic Duck 3DS"
+  CompanyCode             : "00"
+  ProductCode             : "CTR-P-EDCK"
+  ContentType             : Application
+  Logo                    : Nintendo
+
+TitleInfo:
+  UniqueId                : 0xEDC01
+  Category                : Application
+  Version                 : 0x0000
+
+Option:
+  UseOnSD                 : true
+  FreeProductCode         : true
+  MediaRobotSkip          : false
+  EnableCrypt             : false
+  EnableCompress          : true
+  SuitableForSkiptoken    : false
+
+AccessControlInfo:
+  CoreVersion             : 2
+  DescVersion             : 2
+  ReleaseKernelMajor      : "02"
+  ReleaseKernelMinor      : "33"
+  MemoryType              : Application
+  SystemMode              : 64MB
+  IdealProcessor          : 0
+  AffinityMask            : 1
+  Priority                : 16
+  MaxCpu                  : 0
+  HandleTableSize         : 0x200
+  DisableDebug            : false
+  EnableForceDebug        : false
+  CanWriteSharedPage      : false
+  CanUsePrivilegedPriority: false
+  CanUseNonAlphabetAndNumber: false
+  PermitMainFunctionArgument: true
+  CanShareDeviceMemory    : false
+  RunnableOnSleep         : false
+  SpecialMemoryArrange    : false
+  ResourceLimitCategory   : 0
+  SystemSaveDataId1       : 0x00000000
+  SystemSaveDataId2       : 0x00000000
+  OtherUserSaveDataId1    : 0x00000
+  OtherUserSaveDataId2    : 0x00000
+  OtherUserSaveDataId3    : 0x00000
+  FileSystemAccess:
+   - ApplicationSaveData
+   - SaveDataMove
+   - OtherSaveDataPrivateWrite
+   - OtherSaveDataPrivateRead
+   - OtherSaveDataPublicWrite
+   - OtherSaveDataPublicRead
+   - DirectSdmc
+   - DirectSdmcWrite
+
+SystemControlInfo:
+  SaveDataSize: 0x40000
+  RemasterVersion: 0
+  StackSize: 0x40000

@@ -1,0 +1,48 @@
+name: Build Epic Duck 3DS
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install extra tools (makerom)
+        run: |
+          apt-get update && apt-get install -y wget unzip || true
+          # Try a couple common release assets
+          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip -O makerom.zip || \
+          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/v0.18.4/makerom_0_18_4_linux_x86_64.zip -O makerom.zip || true
+          unzip -o makerom.zip || true
+          chmod +x makerom* || true
+          mv makerom* /usr/local/bin/makerom 2>/dev/null || cp makerom /usr/local/bin/ 2>/dev/null || true
+          which makerom || echo "makerom not found, CIA step may fail"
+
+      - name: Build
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=$DEVKITPRO/devkitARM
+          export PATH=$DEVKITARM/bin:$PATH
+          make clean || true
+          make
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: EpicDuck-3DS-build
+          path: |
+            *.3dsx
+            *.cia
+            *.elf
+            *.smdh
+          if-no-files-found: warn
