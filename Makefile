@@ -21,7 +21,6 @@ CC		:= $(PREFIX)gcc
 CXX		:= $(PREFIX)g++
 LD		:= $(PREFIX)c++
 STRIP		:= $(PREFIX)strip
-ELF2SMDH	:= smdhtool
 3DSXTOOL	:= 3dsxtool
 MAKEROM		:= makerom
 
@@ -71,24 +70,33 @@ export PATH		:= $(DEVKITARM)/bin:$(PATH)
 
 .PHONY: all clean $(BUILD)
 
-all: $(BUILD) $(TARGET).3dsx $(TARGET).cia
+all: $(BUILD) $(TARGET).elf $(TARGET).3dsx
+	@# try CIA if possible
+	@$(MAKE) $(TARGET).cia || true
 
 $(BUILD):
 	@mkdir -p $@
 
 $(TARGET).cia: $(TARGET).elf
 	@echo "building .cia..."
-	@$(MAKEROM) -f cia -o $@ -elf $(TARGET).elf -rsf $(CURDIR)/build.rsf -icon $(TARGET).smdh 2>/dev/null || \
-	 $(MAKEROM) -f cia -o $@ -elf $(TARGET).elf -rsf $(CURDIR)/build.rsf || echo "CIA build failed (makerom or rsf issue)"
+	@$(MAKEROM) -f cia -o $@ -elf $(TARGET).elf -rsf $(CURDIR)/build.rsf $(if $(wildcard $(TARGET).smdh),-icon $(TARGET).smdh,) || \
+	 echo "Note: CIA build skipped or failed (need makerom + valid build.rsf)"
 
-$(TARGET).3dsx: $(TARGET).elf $(TARGET).smdh
+$(TARGET).3dsx: $(TARGET).elf
 	@echo "building .3dsx..."
-	@$(3DSXTOOL) $(TARGET).elf $@ --smdh=$(TARGET).smdh
+	@if [ -f $(TARGET).smdh ]; then \
+		$(3DSXTOOL) $(TARGET).elf $@ --smdh=$(TARGET).smdh; \
+	else \
+		$(3DSXTOOL) $(TARGET).elf $@; \
+	fi
 
-$(TARGET).smdh: $(APP_ICON)
-	@echo "building smdh..."
-	@smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(APP_ICON) $@ 2>/dev/null || \
-	 echo "smdh creation skipped (no icon or tool missing)"
+$(TARGET).smdh:
+	@if [ -f $(APP_ICON) ] && command -v smdhtool >/dev/null 2>&1; then \
+		echo "building smdh..."; \
+		smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(APP_ICON) $@; \
+	else \
+		echo "No icon.png or smdhtool - skipping smdh"; \
+	fi
 
 $(TARGET).elf: $(OFILES)
 	@echo "linking..."

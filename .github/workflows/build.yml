@@ -17,32 +17,45 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install extra tools (makerom)
-        run: |
-          apt-get update && apt-get install -y wget unzip || true
-          # Try a couple common release assets
-          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip -O makerom.zip || \
-          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/v0.18.4/makerom_0_18_4_linux_x86_64.zip -O makerom.zip || true
-          unzip -o makerom.zip || true
-          chmod +x makerom* || true
-          mv makerom* /usr/local/bin/makerom 2>/dev/null || cp makerom /usr/local/bin/ 2>/dev/null || true
-          which makerom || echo "makerom not found, CIA step may fail"
-
-      - name: Build
+      - name: Setup environment
         run: |
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=$DEVKITPRO/devkitARM
-          export PATH=$DEVKITARM/bin:$PATH
+          echo "DEVKITPRO=$DEVKITPRO" >> $GITHUB_ENV
+          echo "DEVKITARM=$DEVKITARM" >> $GITHUB_ENV
+          echo "$DEVKITARM/bin" >> $GITHUB_PATH
+
+      - name: Install makerom (for CIA)
+        run: |
+          apt-get update -qq && apt-get install -y -qq wget unzip > /dev/null || true
+          # Project_CTR releases can move; try common ones
+          for url in \
+            "https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip" \
+            "https://github.com/3DSGuy/Project_CTR/releases/download/v0.18.4/makerom_0_18_4_linux_x86_64.zip"; do
+            wget -q "$url" -O makerom.zip && break || true
+          done
+          if [ -f makerom.zip ]; then
+            unzip -o makerom.zip
+            chmod +x makerom* || true
+            mv makerom* /usr/local/bin/makerom 2>/dev/null || true
+          fi
+          which makerom && makerom 2>&1 | head -1 || echo "makerom unavailable - .cia may not build"
+
+      - name: Build project
+        run: |
           make clean || true
           make
 
-      - name: Upload artifacts
+      - name: List outputs
+        run: ls -la *.elf *.3dsx *.cia *.smdh 2>/dev/null || ls -la
+
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: EpicDuck-3DS-build
+          name: EpicDuck-3DS
           path: |
-            *.3dsx
-            *.cia
-            *.elf
-            *.smdh
+            EpicDuck.3dsx
+            EpicDuck.cia
+            EpicDuck.elf
+            EpicDuck.smdh
           if-no-files-found: warn
